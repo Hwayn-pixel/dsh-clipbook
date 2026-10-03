@@ -1,0 +1,80 @@
+{
+  "name": "dsh-clipbook",
+  "version": "0.1.0",
+  "description": "DSH 小夹子：把对话里值得留的话夹起来——一键收藏助手回复，随手翻、随手取、随手导出。",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [],
+      "platform": "web"
+    }
+  },
+  "keywords": [
+    "dsh-plugin",
+    "dsh",
+    "deepseek-harness",
+    "cordis",
+    "cordis-plugin",
+    "plugin",
+    "bookmark",
+    "keep",
+    "clipboard",
+    "notes",
+    "collection",
+    "web-ui"
+  ],
+  "license": "MIT",
+  "author": "Hwayn",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hwayn-pixel/dsh-clipbook.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Hwayn-pixel/dsh-clipbook/issues"
+  },
+  "homepage": "https://github.com/Hwayn-pixel/dsh-clipbook#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@deepseek-ai/schemastery": "^3.18.1"
+  },
+  "peerDependencies": {
+    "react": "^18.2.0"
+  },
+  "devDependencies": {
+    "typescript": "~5.6.3",
+    "@types/node": "22",
+    "@types/react": "~18.3.1",
+    "react": "18.2.0"
+  },
+  "files": [
+    "lib",
+    "src",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh-CN.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "test"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "watch": "node build.mjs --watch",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "node build.mjs",
+    "test": "node test/keep.test.mjs"
+  }
+}
