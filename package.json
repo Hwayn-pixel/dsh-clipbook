@@ -1,6 +1,6 @@
 {
   "name": "dsh-clipbook",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "DSH 小夹子：把对话里值得留的话夹起来——一键收藏助手回复，随手翻、随手取、随手导出。",
   "type": "module",
   "main": "lib/index.js",

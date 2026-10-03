@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 — 2026-10-03
+
+- **Localized UI**: the clip button, header button and panel follow the browser language — Chinese UI in Chinese, everyone else in English.
+- **Source comments translated to English** (host and browser halves).
+- Settings schema descriptions and server messages are now English.
+
 ## 0.1.0 — 2026-10-03
 
 First release. 《小夹子》：把对话里值得留的话夹起来。

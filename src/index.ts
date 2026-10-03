@@ -2,17 +2,16 @@
 /**
  * dsh-clipbook — Host half.
  *
- * 小夹子 keeps a *shelf of things worth keeping*. The host half is the shelf itself:
+ * The clipbook keeps a shelf of things worth keeping. This half is the shelf itself:
  *
- *   1. **One file, one shelf** — every clipped message lives in `~/.dsh/keep/items.json`.
- *      A clip is a small structured record (text, title, model, time), not a copy of the
- *      whole conversation, so the shelf stays readable and cheap to load.
- *   2. **Closing is idempotent** — clipping the same message twice keeps the first clip.
- *      The `messageId` is the identity; the button can be pressed as often as you like.
- *   3. **The shelf has a limit** — `maxItems` holds the newest N and drops the oldest
- *      beyond it. A shelf that grows forever is a junk drawer.
- *   4. **It hands you the shelf back** — `/dsh-clipbook/export` renders the whole thing as
- *      Markdown, so what you kept is never trapped in this plugin.
+ *   1. **One file, one shelf** — every clip lives in `$DSH_HOME/clipbook/items.json`. A clip is a
+ *      small structured record (text, title, model, time), not a copy of the whole conversation,
+ *      so the shelf stays readable and cheap to load.
+ *   2. **Clipping is idempotent** — clipping the same message twice keeps the first clip. The
+ *      `messageId` is the identity, so the button can be pressed as often as you like.
+ *   3. **The shelf has a limit** — `maxItems` keeps the newest N and drops the oldest beyond it.
+ *   4. **It hands the shelf back** — `/dsh-clipbook/export` renders the whole thing as Markdown, so
+ *      what you kept is never trapped in this plugin.
  */
 import z from "@deepseek-ai/schemastery";
 import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
@@ -37,12 +36,12 @@ export interface KeepItem {
   createdAt: number;
 }
 
-export const KeepSchema = z
+export const ClipbookSchema = z
   .object({
-    enabled: z.boolean().default(true).description("总开关：关闭后小夹子不再收新东西（已有的仍在）"),
-    maxItems: z.number().default(DEFAULT_MAX).description("架子上最多留多少条，超出丢掉最旧的"),
+    enabled: z.boolean().default(true).description("Master switch: when off, the shelf stops accepting new clips (existing ones stay)"),
+    maxItems: z.number().default(DEFAULT_MAX).description("Most items to keep on the shelf; older ones are dropped"),
   })
-  .description("dsh-clipbook：把对话里值得留的话夹起来");
+  .description("dsh-clipbook: keep the lines from a conversation worth keeping");
 
 interface SettingsLike {
   get(ns: string): unknown;
@@ -53,11 +52,11 @@ interface HostContext {
   inject(services: readonly string[], fn: (ctx: HostContext) => void): unknown;
   effect(fn: () => unknown, label?: string): unknown;
 }
-interface KeepValue {
+interface ClipbookValue {
   enabled?: boolean;
   maxItems?: number;
 }
-const DEFAULTS: KeepValue = { enabled: true, maxItems: DEFAULT_MAX };
+const DEFAULTS: ClipbookValue = { enabled: true, maxItems: DEFAULT_MAX };
 
 // ── the shelf ───────────────────────────────────────────────────────────────
 let items: KeepItem[] = [];
@@ -75,7 +74,7 @@ export function firstLine(text: string, max = TITLE_MAX): string {
       .map((row) => row.replace(/^[#>\-*\s]+/, "").trim())
       .find((row) => row.length > 0) ?? "";
   const flat = line.replace(/\s+/g, " ").trim();
-  if (!flat) return "(无标题)";
+  if (!flat) return "(untitled)";
   return flat.length > max ? flat.slice(0, max) + "…" : flat;
 }
 
@@ -95,9 +94,9 @@ export function makeItem(input: Partial<KeepItem>, now = Date.now()): KeepItem {
 
 export function toMarkdown(list: KeepItem[], now = new Date()): string {
   const out: string[] = [
-    "# 小夹子 · 对话收藏",
+    "# Clipbook",
     "",
-    `> 导出时间：${now.toLocaleString()} · 共 ${list.length} 条`,
+    `> Exported ${now.toLocaleString()} · ${list.length} clip(s)`,
     "",
   ];
   for (const item of list) {
@@ -142,10 +141,10 @@ function persist(value: KeepItem[]): void {
   }, 120);
 }
 
-function readValue(settings: SettingsLike | undefined): KeepValue {
+function readValue(settings: SettingsLike | undefined): ClipbookValue {
   try {
     const raw = settings?.get(SETTINGS_NAMESPACE);
-    if (raw && typeof raw === "object") return { ...DEFAULTS, ...(raw as KeepValue) };
+    if (raw && typeof raw === "object") return { ...DEFAULTS, ...(raw as ClipbookValue) };
   } catch {
     /* the settings service may not be attached yet */
   }
@@ -180,7 +179,7 @@ export function apply(ctx: HostContext): void {
   load();
 
   ctx.inject(["settings"], (settingsCtx) => {
-    (settingsCtx as unknown as { settings: SettingsLike }).settings.register?.(SETTINGS_NAMESPACE, KeepSchema);
+    (settingsCtx as unknown as { settings: SettingsLike }).settings.register?.(SETTINGS_NAMESPACE, ClipbookSchema);
   });
 
   const settingsOf = (): SettingsLike | undefined => (ctx.get ? ctx.get("settings") : undefined) as SettingsLike | undefined;
@@ -215,10 +214,10 @@ export function apply(ctx: HostContext): void {
 
               // POST /dsh-clipbook/items — clip one message. Idempotent on messageId.
               if (req.method === "POST" && url.pathname === `${ROUTE_PREFIX}/items`) {
-                if (value.enabled === false) return ok(200, { ok: false, error: "小夹子现在是关着的" });
+                if (value.enabled === false) return ok(200, { ok: false, error: "the clipbook is turned off" });
                 const body = await readBody(req);
                 const text = String(body?.text ?? "");
-                if (!text.trim()) return ok(400, { ok: false, error: "空的东西不收" });
+                if (!text.trim()) return ok(400, { ok: false, error: "nothing to clip" });
                 const messageId = body?.messageId ? String(body.messageId) : undefined;
                 if (messageId) {
                   const existing = items.find((row) => row.messageId === messageId);
@@ -243,7 +242,7 @@ export function apply(ctx: HostContext): void {
                 const body = await readBody(req);
                 const id = String(body?.id ?? "");
                 const found = items.find((row) => row.id === id);
-                if (!found) return ok(404, { ok: false, error: "没找到这条" });
+                if (!found) return ok(404, { ok: false, error: "clip not found" });
                 if (body?.title !== undefined) found.title = String(body.title).slice(0, TITLE_MAX * 2) || firstLine(found.text);
                 persist(items);
                 return ok(200, { ok: true, item: found });
