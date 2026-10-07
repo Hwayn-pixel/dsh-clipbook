@@ -148,6 +148,8 @@ const CSS = `
 .dshKeep-btn[disabled]{opacity:.45;cursor:default}
 .dshKeep-btn--on{border-color:transparent;background:var(--k-accent);color:#fff}
 .dshKeep-btn--on:hover{filter:brightness(1.06);background:var(--k-accent)}
+.dshKeep-btn--danger{border-color:rgba(214,64,64,.55);background:rgba(214,64,64,.12);color:#d64545}
+.dshKeep-btn--danger:hover{background:rgba(214,64,64,.2);border-color:rgba(214,64,64,.7)}
 .dshKeep-head{position:relative;display:inline-flex}
 .dshKeep-back{position:fixed;inset:0;background:rgba(10,12,20,.28);z-index:60}
 .dshKeep-panel{position:fixed;top:64px;right:18px;width:420px;max-width:92vw;max-height:78vh;z-index:61;
@@ -234,9 +236,28 @@ function ClipAction(props: any): React.ReactElement {
 }
 
 // ── the shelf list (shared by the panel and the settings page) ──────────────
-function ClipList(props: { items: KeepItem[] }): React.ReactElement {
+function ClipList(props: { items: KeepItem[]; query?: string; total?: number }): React.ReactElement {
   const [copied, setCopied] = React.useState("");
-  if (!props.items.length) return h("div", { className: "dshKeep-empty" }, t("架子上还空着。在助手的回复上点「夹一下」。", "The shelf is empty. Click 'Clip' on an assistant reply."));
+  const [confirming, setConfirming] = React.useState("");
+  const query = String(props.query ?? "").trim();
+  if (!props.items.length) {
+    // "nothing matched your search" reads very differently from "the shelf is empty".
+    if (query) {
+      return h(
+        "div",
+        { className: "dshKeep-empty" },
+        t(`没找到和「${query}」匹配的条目。`, `No clips match “${query}”.`),
+        h("div", { className: "dshKeep-sub", style: { marginTop: 6 } }, t(`架上一共 ${props.total ?? 0} 条，换个词再搜。`, `${props.total ?? 0} clip(s) on the shelf — try another word.`)),
+      );
+    }
+    return h(
+      "div",
+      { className: "dshKeep-empty" },
+      t("还没夹过东西。", "Nothing clipped yet."),
+      h("div", { className: "dshKeep-sub", style: { marginTop: 6 } }, t("在任意助手回复下方点「🔖 夹一下」，那段话就会收进这里。", "Click “🔖 Clip” under any assistant reply and it lands here.")),
+      h("div", { className: "dshKeep-sub", style: { marginTop: 6, opacity: 0.7 } }, t("小夹子 = 你的对话收藏夹，存在本机，随时能导出 Markdown。", "The clipbook is your saved replies — stored locally, exportable to Markdown anytime.")),
+    );
+  }
   return h(
     "div",
     { className: "dshKeep-list" },
@@ -270,7 +291,23 @@ function ClipList(props: { items: KeepItem[] }): React.ReactElement {
             },
             copied === item.id ? t("已复制", "Copied") : t("复制", "Copy"),
           ),
-          h("button", { className: "dshKeep-btn", onClick: () => void drop(item.id) }, t("拿掉", "Remove")),
+          h(
+            "button",
+            {
+              className: `dshKeep-btn${confirming === item.id ? " dshKeep-btn--danger" : ""}`,
+              title: confirming === item.id ? t("删了就找不回来了", "Deleting cannot be undone") : t("把这条拿掉", "Take this clip off the shelf"),
+              onClick: () => {
+                if (confirming !== item.id) {
+                  setConfirming(item.id);
+                  setTimeout(() => setConfirming((value) => (value === item.id ? "" : value)), 3000);
+                  return;
+                }
+                setConfirming("");
+                void drop(item.id);
+              },
+            },
+            confirming === item.id ? t("确定删除？", "Delete?") : t("删除", "Delete"),
+          ),
         ),
       ),
     ),
@@ -313,9 +350,9 @@ function ClipHeader(): React.ReactElement {
               "div",
               { className: "dshKeep-panelTop" },
               h("span", { className: "dshKeep-title" }, t("🦊 小夹子", "🦊 Clipbook")),
-              h("span", { className: "dshKeep-sub" }, t(`${current.items.length} 条`, `${current.items.length} clips`)),
+              h("span", { className: "dshKeep-sub" }, query.trim() ? t(`找到 ${shown.length} / ${current.items.length} 条`, `${shown.length} of ${current.items.length}`) : t(`${current.items.length} 条`, `${current.items.length} clip(s)`)),
               h("div", { className: "dshKeep-grow" }),
-              h("button", { className: "dshKeep-btn", onClick: () => window.open(`${ROUTE}/export?raw=1`, "_blank") }, t("导出", "Export")),
+              h("button", { className: "dshKeep-btn", title: t("把全部收藏导出成 Markdown 文件", "Export the whole shelf as a Markdown file"), onClick: () => window.open(`${ROUTE}/export?raw=1`, "_blank") }, t("导出 Markdown", "Export Markdown")),
               h("button", { className: "dshKeep-btn", onClick: () => setOpen(false) }, t("关", "Close")),
             ),
             h("input", {
@@ -324,7 +361,7 @@ function ClipHeader(): React.ReactElement {
               value: query,
               onChange: (event: any) => setQuery(event.target.value),
             }),
-            h(ClipList, { items: shown }),
+            h(ClipList, { items: shown, query, total: current.items.length }),
           ),
         )
       : null,
@@ -344,13 +381,13 @@ function ClipSettings(): React.ReactElement {
       "div",
       { className: "dshKeep-panelTop", style: { border: "none", padding: 0 } },
       h("span", { className: "dshKeep-title" }, t("🦊 小夹子", "🦊 Clipbook")),
-      h("span", { className: "dshKeep-sub" }, t(`架上 ${current.items.length} 条 · 存在 $DSH_HOME/clipbook/items.json`, `${current.items.length} clips · stored in $DSH_HOME/clipbook/items.json`)),
+      h("span", { className: "dshKeep-sub" }, query.trim() ? t(`找到 ${shown.length} / ${current.items.length} 条`, `${shown.length} of ${current.items.length}`) : t(`架上 ${current.items.length} 条 · 存在本机（$DSH_HOME/clipbook/items.json）`, `${current.items.length} clip(s) · stored locally ($DSH_HOME/clipbook/items.json)`)),
       h("div", { className: "dshKeep-grow" }),
       h("button", { className: "dshKeep-btn", onClick: () => void refresh() }, t("刷新", "Refresh")),
-      h("button", { className: "dshKeep-btn", onClick: () => window.open(`${ROUTE}/export?raw=1`, "_blank") }, t("导出 Markdown", "Export Markdown")),
+      h("button", { className: "dshKeep-btn", title: t("把全部收藏导出成 Markdown 文件", "Export the whole shelf as a Markdown file"), onClick: () => window.open(`${ROUTE}/export?raw=1`, "_blank") }, t("导出 Markdown", "Export Markdown")),
     ),
     h("input", { className: "dshKeep-search", style: { margin: 0 }, placeholder: t("搜一搜…", "Search…"), value: query, onChange: (event: any) => setQuery(event.target.value) }),
-    h(ClipList, { items: shown }),
+    h(ClipList, { items: shown, query, total: current.items.length }),
   );
 }
 

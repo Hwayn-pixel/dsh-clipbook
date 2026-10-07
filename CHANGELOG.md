@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.0
+
+给两种人都顺一点的一次打磨（0.2.0 → 0.3.0）：
+
+- 空状态重写：说清"小夹子 = 对话收藏夹"、从哪存（助手回复下方「夹一下」）、存在哪（本机）。
+- 修掉一个真 bug：搜索没命中时，原本会说"架子空着"，让人以为收藏丢了 —— 现在分开报"没找到"和"一共几条"。
+- 删除改成两步确认；导出按钮统一叫「导出 Markdown」；搜索时显示「找到 X / N 条」。
+
+
 ## 0.2.0 — 2026-10-03
 
 - **Localized UI**: the clip button, header button and panel follow the browser language — Chinese UI in Chinese, everyone else in English.

@@ -62,3 +62,11 @@ npm test           # pure-logic unit tests (against the built bundles; no DSH ne
 - **Author: Hwayn (幻弈)**
 - **Collaborator: Yucheng Xiao (肖宇成)** — direction, requirements, testing
 - License: MIT
+
+## For both kinds of users
+
+- **第一次用**: 在任意助手回复**下方**点「🔖 夹一下」，那段话就进小夹子了。
+- **找东西**: 面板里直接搜，副标题会告诉你命中几条。
+- **带走**: 「导出 Markdown」把整个夹子导成一篇 Markdown。
+
+In one line: a first-timer gets running in one click; a regular keeps everything within reach.
